@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
 
+    # LLM (OpenAI-compatible)
+    llm_api_key: str = "sk-placeholder"
+    llm_base_url: str = ""  # Empty = OpenAI default. Set for local/proxy.
+    llm_model: str = "gpt-4o-mini"
+    llm_temperature: float = 0.1
+
     @property
     def database_url(self) -> str:
         return (
