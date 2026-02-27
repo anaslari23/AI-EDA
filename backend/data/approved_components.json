@@ -1,0 +1,319 @@
+{
+    "mcus": [
+        {
+            "part_number": "ESP32-S3-WROOM-1",
+            "manufacturer": "Espressif",
+            "core": "Xtensa LX7 Dual-Core",
+            "clock_mhz": 240,
+            "flash_kb": 8192,
+            "ram_kb": 512,
+            "gpio_count": 45,
+            "operating_voltage": 3.3,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "I2S",
+                "ADC",
+                "PWM",
+                "SDIO",
+                "USB"
+            ],
+            "wireless": [
+                "WiFi",
+                "Bluetooth",
+                "BLE"
+            ],
+            "package": "Module",
+            "unit_price": 3.50
+        },
+        {
+            "part_number": "ESP32-C3-MINI-1",
+            "manufacturer": "Espressif",
+            "core": "RISC-V Single-Core",
+            "clock_mhz": 160,
+            "flash_kb": 4096,
+            "ram_kb": 400,
+            "gpio_count": 22,
+            "operating_voltage": 3.3,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "ADC",
+                "PWM"
+            ],
+            "wireless": [
+                "WiFi",
+                "BLE"
+            ],
+            "package": "Module",
+            "unit_price": 1.80
+        },
+        {
+            "part_number": "STM32F411CEU6",
+            "manufacturer": "STMicroelectronics",
+            "core": "ARM Cortex-M4",
+            "clock_mhz": 100,
+            "flash_kb": 512,
+            "ram_kb": 128,
+            "gpio_count": 36,
+            "operating_voltage": 3.3,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "I2S",
+                "ADC",
+                "PWM",
+                "USB"
+            ],
+            "wireless": [],
+            "package": "UFQFPN48",
+            "unit_price": 3.20
+        },
+        {
+            "part_number": "nRF52840",
+            "manufacturer": "Nordic Semiconductor",
+            "core": "ARM Cortex-M4F",
+            "clock_mhz": 64,
+            "flash_kb": 1024,
+            "ram_kb": 256,
+            "gpio_count": 48,
+            "operating_voltage": 3.3,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "ADC",
+                "PWM",
+                "USB",
+                "I2S"
+            ],
+            "wireless": [
+                "Bluetooth",
+                "BLE",
+                "Zigbee",
+                "Thread"
+            ],
+            "package": "QFN48",
+            "unit_price": 4.50
+        },
+        {
+            "part_number": "ATmega328P",
+            "manufacturer": "Microchip",
+            "core": "AVR 8-bit",
+            "clock_mhz": 20,
+            "flash_kb": 32,
+            "ram_kb": 2,
+            "gpio_count": 23,
+            "operating_voltage": 5.0,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "ADC",
+                "PWM"
+            ],
+            "wireless": [],
+            "package": "TQFP32",
+            "unit_price": 1.80
+        },
+        {
+            "part_number": "RP2040",
+            "manufacturer": "Raspberry Pi",
+            "core": "ARM Cortex-M0+ Dual-Core",
+            "clock_mhz": 133,
+            "flash_kb": 0,
+            "ram_kb": 264,
+            "gpio_count": 30,
+            "operating_voltage": 3.3,
+            "interfaces": [
+                "I2C",
+                "SPI",
+                "UART",
+                "ADC",
+                "PWM",
+                "USB",
+                "I2S"
+            ],
+            "wireless": [],
+            "package": "QFN56",
+            "unit_price": 0.80
+        }
+    ],
+    "sensors": [
+        {
+            "part_number": "BME280",
+            "manufacturer": "Bosch",
+            "sensor_type": "temperature/humidity/pressure",
+            "interface": "I2C",
+            "operating_voltage_min": 1.71,
+            "operating_voltage_max": 3.6,
+            "package": "LGA-8",
+            "unit_price": 3.50
+        },
+        {
+            "part_number": "SHT31-DIS",
+            "manufacturer": "Sensirion",
+            "sensor_type": "temperature/humidity",
+            "interface": "I2C",
+            "operating_voltage_min": 2.4,
+            "operating_voltage_max": 5.5,
+            "package": "DFN-8",
+            "unit_price": 4.20
+        },
+        {
+            "part_number": "MPU6050",
+            "manufacturer": "TDK InvenSense",
+            "sensor_type": "IMU/accelerometer/gyroscope",
+            "interface": "I2C",
+            "operating_voltage_min": 2.375,
+            "operating_voltage_max": 3.46,
+            "package": "QFN-24",
+            "unit_price": 2.80
+        },
+        {
+            "part_number": "BMP390",
+            "manufacturer": "Bosch",
+            "sensor_type": "pressure/temperature",
+            "interface": "I2C",
+            "operating_voltage_min": 1.7,
+            "operating_voltage_max": 3.6,
+            "package": "LGA-10",
+            "unit_price": 2.90
+        },
+        {
+            "part_number": "VEML7700",
+            "manufacturer": "Vishay",
+            "sensor_type": "ambient light",
+            "interface": "I2C",
+            "operating_voltage_min": 2.5,
+            "operating_voltage_max": 3.6,
+            "package": "QFN",
+            "unit_price": 1.50
+        },
+        {
+            "part_number": "SEN0193",
+            "manufacturer": "DFRobot",
+            "sensor_type": "soil moisture",
+            "interface": "analog",
+            "operating_voltage_min": 3.3,
+            "operating_voltage_max": 5.5,
+            "package": "Module",
+            "unit_price": 4.50
+        },
+        {
+            "part_number": "NEO-6M",
+            "manufacturer": "u-blox",
+            "sensor_type": "GPS",
+            "interface": "UART",
+            "operating_voltage_min": 2.7,
+            "operating_voltage_max": 3.6,
+            "package": "Module",
+            "unit_price": 8.00
+        },
+        {
+            "part_number": "HC-SR04",
+            "manufacturer": "Generic",
+            "sensor_type": "ultrasonic distance",
+            "interface": "GPIO",
+            "operating_voltage_min": 4.5,
+            "operating_voltage_max": 5.5,
+            "package": "Module",
+            "unit_price": 2.00
+        },
+        {
+            "part_number": "INA219",
+            "manufacturer": "Texas Instruments",
+            "sensor_type": "current sensor/voltage sensor",
+            "interface": "I2C",
+            "operating_voltage_min": 3.0,
+            "operating_voltage_max": 5.5,
+            "package": "SOT-23-8",
+            "unit_price": 1.20
+        },
+        {
+            "part_number": "CCS811",
+            "manufacturer": "ScioSense",
+            "sensor_type": "air quality sensor/CO2 sensor",
+            "interface": "I2C",
+            "operating_voltage_min": 1.8,
+            "operating_voltage_max": 3.6,
+            "package": "LGA-10",
+            "unit_price": 5.50
+        },
+        {
+            "part_number": "AM2302",
+            "manufacturer": "Aosong",
+            "sensor_type": "temperature/humidity",
+            "interface": "1-Wire",
+            "operating_voltage_min": 3.3,
+            "operating_voltage_max": 5.5,
+            "package": "Through-hole",
+            "unit_price": 3.00
+        }
+    ],
+    "regulators": [
+        {
+            "part_number": "AMS1117-3.3",
+            "manufacturer": "Advanced Monolithic Systems",
+            "topology": "LDO",
+            "vin_min": 4.5,
+            "vin_max": 15.0,
+            "vout": 3.3,
+            "max_current_ma": 1000,
+            "dropout_v": 1.1,
+            "package": "SOT-223",
+            "unit_price": 0.25
+        },
+        {
+            "part_number": "MCP1700-3302E",
+            "manufacturer": "Microchip",
+            "topology": "LDO",
+            "vin_min": 2.3,
+            "vin_max": 6.0,
+            "vout": 3.3,
+            "max_current_ma": 250,
+            "dropout_v": 0.178,
+            "package": "SOT-23-3",
+            "unit_price": 0.40
+        },
+        {
+            "part_number": "AP2112K-3.3",
+            "manufacturer": "Diodes Incorporated",
+            "topology": "LDO",
+            "vin_min": 2.5,
+            "vin_max": 6.0,
+            "vout": 3.3,
+            "max_current_ma": 600,
+            "dropout_v": 0.25,
+            "package": "SOT-23-5",
+            "unit_price": 0.35
+        },
+        {
+            "part_number": "TPS62200",
+            "manufacturer": "Texas Instruments",
+            "topology": "buck",
+            "vin_min": 3.0,
+            "vin_max": 12.0,
+            "vout": 3.3,
+            "max_current_ma": 300,
+            "dropout_v": 0.0,
+            "package": "SOT-23-5",
+            "unit_price": 1.50
+        },
+        {
+            "part_number": "AMS1117-5.0",
+            "manufacturer": "Advanced Monolithic Systems",
+            "topology": "LDO",
+            "vin_min": 6.5,
+            "vin_max": 15.0,
+            "vout": 5.0,
+            "max_current_ma": 1000,
+            "dropout_v": 1.1,
+            "package": "SOT-223",
+            "unit_price": 0.25
+        }
+    ]
+}
