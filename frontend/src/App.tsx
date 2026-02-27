@@ -6,15 +6,19 @@ import './styles/index.css';
 
 export default function App() {
   const { pipelineResult, error } = useDesignStore();
-  const circuit = pipelineResult?.circuit ?? null;
 
   return (
     <div className="app">
       <header className="app__header">
         <div className="app__logo">
           <span className="app__logo-icon">⚡</span>
-          <h1 className="app__title">AI EDA</h1>
+          <h1 className="app__title">ANTIGRAVITY</h1>
           <span className="app__subtitle">AI-Native EDA</span>
+        </div>
+        <div className="app__toolbar">
+          <span className="app__status">
+            {pipelineResult ? `${pipelineResult.circuit.nodes.length} components` : 'No design loaded'}
+          </span>
         </div>
       </header>
 
@@ -30,7 +34,7 @@ export default function App() {
         </aside>
 
         <section className="app__canvas">
-          <SchematicCanvas circuit={circuit} />
+          <SchematicCanvas />
         </section>
       </main>
     </div>

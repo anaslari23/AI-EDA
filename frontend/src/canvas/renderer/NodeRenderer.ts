@@ -62,7 +62,6 @@ export function createNodeLabels(
 
     const sx = node.position.x * zoom + vx;
     const sy = node.position.y * zoom + vy;
-    const sw = node.size.width * zoom;
 
     // Node label
     const labelText = new Text({

@@ -14,7 +14,7 @@ export function circuitGraphToCanvasNodes(
     for (let i = 0; i < graph.nodes.length; i++) {
         const gNode = graph.nodes[i];
         const nodeType = mapNodeType(gNode.type);
-        const pins = generatePinLayout(gNode.pins, nodeType);
+        const pins = generatePinLayout(gNode.pins);
         const size = calculateNodeSize(pins.length);
 
         // Place pins with calculated offsets on the node
@@ -51,7 +51,6 @@ function mapNodeType(backendType: string): NodeType {
 
 function generatePinLayout(
     pinNames: string[],
-    nodeType: NodeType
 ): Array<{ label: string; direction: Pin['direction']; signalType: Pin['signalType'] }> {
     return pinNames.map((name) => ({
         label: name,

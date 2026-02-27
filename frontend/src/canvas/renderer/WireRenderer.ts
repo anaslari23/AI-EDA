@@ -3,7 +3,6 @@ import {
     DEFAULT_THEME,
     type Edge,
     type EdgeState,
-    type Position,
     type Viewport,
     type WireDrawingState,
 } from '../types';
