@@ -12,7 +12,7 @@ export default function App() {
       <header className="app__header">
         <div className="app__logo">
           <span className="app__logo-icon">⚡</span>
-          <h1 className="app__title">ANTIGRAVITY</h1>
+          <h1 className="app__title">AI EDA</h1>
           <span className="app__subtitle">AI-Native EDA</span>
         </div>
         <div className="app__toolbar">

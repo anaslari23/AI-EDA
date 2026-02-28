@@ -411,3 +411,49 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ─── Error Boundary ─── */
+
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.error-boundary__icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-boundary__title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.error-boundary__message {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 400px;
+  margin-bottom: 20px;
+}
+
+.error-boundary__retry {
+  padding: 8px 20px;
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.15s;
+}
+
+.error-boundary__retry:hover {
+  opacity: 0.85;
+}
