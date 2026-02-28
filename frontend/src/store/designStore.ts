@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PipelineResult, CircuitGraph } from '../types';
+import type { PipelineResult } from '../types';
 
 interface DesignState {
     // Pipeline state

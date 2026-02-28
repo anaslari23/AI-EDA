@@ -1,10 +1,14 @@
-"""Circuit router — CRUD and generation endpoints."""
+"""Circuit router — CRUD, AI generation, BOM/PCB/Gerber export.
+
+No validation endpoints — validation runs in the frontend.
+"""
 
 from __future__ import annotations
 
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -21,6 +25,9 @@ router = APIRouter()
 
 def _get_service(db: AsyncSession = Depends(get_db)) -> CircuitService:
     return CircuitService(db)
+
+
+# ─── CRUD ───
 
 
 @router.post(
@@ -54,7 +61,7 @@ async def update_circuit_graph(
     data: CircuitUpdateGraph,
     service: CircuitService = Depends(_get_service),
 ):
-    """Update the circuit graph. Auto-revalidates and regenerates BOM/PCB."""
+    """Persist a graph snapshot from the frontend. Regenerates BOM/PCB."""
     circuit = await service.update_graph(circuit_id, data)
     return CircuitResponse.model_validate(circuit)
 
@@ -65,7 +72,7 @@ async def generate_circuit(
     data: CircuitGenerateRequest,
     service: CircuitService = Depends(_get_service),
 ):
-    """Run full AI pipeline from NL description and store results."""
+    """Run AI pipeline from NL description and store results."""
     circuit = await service.generate_from_description(circuit_id, data.description)
     return CircuitResponse.model_validate(circuit)
 
@@ -90,3 +97,26 @@ async def delete_circuit(
 ):
     """Delete a circuit."""
     await service.delete(circuit_id)
+
+
+# ─── Export ───
+
+
+@router.get("/{circuit_id}/bom")
+async def export_bom(
+    circuit_id: uuid.UUID,
+    service: CircuitService = Depends(_get_service),
+):
+    """Export BOM data for a circuit."""
+    bom = await service.get_bom(circuit_id)
+    return bom
+
+
+@router.get("/{circuit_id}/pcb")
+async def export_pcb_constraints(
+    circuit_id: uuid.UUID,
+    service: CircuitService = Depends(_get_service),
+):
+    """Export PCB constraints for a circuit."""
+    pcb = await service.get_pcb_constraints(circuit_id)
+    return pcb

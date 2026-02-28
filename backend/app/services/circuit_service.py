@@ -1,4 +1,8 @@
-"""Circuit service — business logic for circuit CRUD, generation, and validation."""
+"""Circuit service — CRUD and AI generation (no validation logic).
+
+Validation is handled entirely by the frontend.
+The backend persists graph snapshots and runs AI generation.
+"""
 
 from __future__ import annotations
 
@@ -11,24 +15,19 @@ from fastapi import HTTPException, status
 from app.models.project import Circuit
 from app.schemas.circuit_crud import CircuitCreate, CircuitUpdateGraph
 from app.schemas.circuit import CircuitGraph
-from app.schemas.validation import ValidationResult, ValidationStatus
-from app.schemas.bom import BOM
-from app.schemas.pcb import PCBConstraints
 
 from app.ai.intent_parser import parse_intent
 from app.ai.component_selector import select_components
 from app.ai.circuit_generator import generate_circuit
-from app.validation.engine import validate_circuit
-from app.validation.correction import correct_circuit
 from app.pcb.constraints import generate_pcb_constraints
 from app.bom.generator import generate_bom
-
-MAX_CORRECTION_ITERATIONS = 3
 
 
 class CircuitService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # ─── CRUD ───
 
     async def create(self, project_id: uuid.UUID, data: CircuitCreate) -> Circuit:
         circuit = Circuit(
@@ -63,29 +62,34 @@ class CircuitService:
     async def update_graph(
         self, circuit_id: uuid.UUID, data: CircuitUpdateGraph
     ) -> Circuit:
+        """Persist a graph snapshot from the frontend.
+
+        No server-side validation — the frontend validates before saving.
+        BOM and PCB constraints are regenerated from the new graph.
+        """
         circuit = await self.get_by_id(circuit_id)
         circuit.graph_data = data.graph.model_dump()
         circuit.version += 1
 
-        # Re-validate after graph change
-        validation = validate_circuit(data.graph)
-        circuit.is_valid = validation.status == ValidationStatus.VALID
-        circuit.validation_errors = validation.model_dump()
-
-        # Regenerate BOM and PCB constraints if valid
-        if circuit.is_valid:
-            bom = generate_bom(data.graph)
-            pcb = generate_pcb_constraints(data.graph)
-            circuit.bom_data = bom.model_dump()
-            circuit.pcb_constraints_data = pcb.model_dump()
+        # Re-generate BOM and PCB constraints from the new graph
+        bom = generate_bom(data.graph)
+        pcb = generate_pcb_constraints(data.graph)
+        circuit.bom_data = bom.model_dump()
+        circuit.pcb_constraints_data = pcb.model_dump()
 
         await self.db.flush()
         return circuit
 
+    # ─── AI Generation ───
+
     async def generate_from_description(
         self, circuit_id: uuid.UUID, description: str
     ) -> Circuit:
-        """Run full AI pipeline and store results in the circuit."""
+        """Run AI pipeline: NL → Intent → Components → Circuit.
+
+        Returns the generated graph for the frontend to validate.
+        No backend validation — the frontend handles it.
+        """
         circuit = await self.get_by_id(circuit_id)
         circuit.source_description = description
 
@@ -102,59 +106,43 @@ class CircuitService:
 
         # Engine 3: Generate circuit graph
         graph = generate_circuit(components)
-
-        # Engine 4 + 5: Validate and correct
-        for _ in range(MAX_CORRECTION_ITERATIONS):
-            validation = validate_circuit(graph)
-            if validation.status == ValidationStatus.VALID:
-                break
-            result = correct_circuit(graph, validation)
-            graph = result.corrected_graph
-
-        validation = validate_circuit(graph)
-
         circuit.graph_data = graph.model_dump()
-        circuit.is_valid = validation.status == ValidationStatus.VALID
-        circuit.validation_errors = validation.model_dump()
         circuit.version += 1
 
-        if circuit.is_valid:
-            bom = generate_bom(graph)
-            pcb = generate_pcb_constraints(graph)
-            circuit.bom_data = bom.model_dump()
-            circuit.pcb_constraints_data = pcb.model_dump()
+        # Generate BOM + PCB constraints from generated graph
+        bom = generate_bom(graph)
+        pcb = generate_pcb_constraints(graph)
+        circuit.bom_data = bom.model_dump()
+        circuit.pcb_constraints_data = pcb.model_dump()
 
         await self.db.flush()
         return circuit
 
-    async def validate(
-        self, circuit_id: uuid.UUID
-    ) -> tuple[ValidationResult, BOM | None, PCBConstraints | None]:
-        """Validate an existing circuit and update its state."""
+    # ─── Export Helpers ───
+
+    async def get_bom(self, circuit_id: uuid.UUID) -> dict:
+        """Return BOM data for a circuit."""
         circuit = await self.get_by_id(circuit_id)
-
-        if not circuit.graph_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Circuit has no graph data to validate",
-            )
-
-        graph = CircuitGraph(**circuit.graph_data)
-        validation = validate_circuit(graph)
-
-        circuit.is_valid = validation.status == ValidationStatus.VALID
-        circuit.validation_errors = validation.model_dump()
-
-        bom = None
-        pcb = None
-        if circuit.is_valid:
+        if not circuit.bom_data:
+            if not circuit.graph_data:
+                raise HTTPException(400, "No graph data to generate BOM")
+            graph = CircuitGraph(**circuit.graph_data)
             bom = generate_bom(graph)
-            pcb = generate_pcb_constraints(graph)
             circuit.bom_data = bom.model_dump()
-            circuit.pcb_constraints_data = pcb.model_dump()
+            await self.db.flush()
+        return circuit.bom_data
 
-        await self.db.flush()
-        return validation, bom, pcb
+    async def get_pcb_constraints(self, circuit_id: uuid.UUID) -> dict:
+        """Return PCB constraints for a circuit."""
+        circuit = await self.get_by_id(circuit_id)
+        if not circuit.pcb_constraints_data:
+            if not circuit.graph_data:
+                raise HTTPException(400, "No graph data to generate PCB")
+            graph = CircuitGraph(**circuit.graph_data)
+            pcb = generate_pcb_constraints(graph)
+            circuit.pcb_constraints_data = pcb.model_dump()
+            await self.db.flush()
+        return circuit.pcb_constraints_data
 
     async def delete(self, circuit_id: uuid.UUID) -> None:
         circuit = await self.get_by_id(circuit_id)

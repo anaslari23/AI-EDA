@@ -12,6 +12,7 @@
   "dependencies": {
     "@pixi/react": "^8.0.5",
     "axios": "^1.13.6",
+    "immer": "^11.1.4",
     "pixi.js": "^8.16.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -47,34 +47,36 @@ export default function PipelineOutput({ result }: PipelineOutputProps) {
                 )}
             </section>
 
-            {/* Validation */}
-            <section className="pipeline-output__section">
-                <h4>Validation ({validation.checks_passed}/{validation.checks_total} passed)</h4>
-                {validation.errors.length > 0 && (
-                    <ul className="pipeline-output__errors">
-                        {validation.errors.map((e, i) => (
-                            <li key={i} className="pipeline-output__error">
-                                <code>{e.code}</code>: {e.message}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {validation.warnings.length > 0 && (
-                    <ul className="pipeline-output__warnings">
-                        {validation.warnings.map((w, i) => (
-                            <li key={i} className="pipeline-output__warning">
-                                <code>{w.code}</code>: {w.message}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {validation.errors.length === 0 && validation.warnings.length === 0 && (
-                    <p className="pipeline-output__success">All checks passed.</p>
-                )}
-            </section>
+            {/* Validation (optional — may not be present after backend refactor) */}
+            {validation && (
+                <section className="pipeline-output__section">
+                    <h4>Validation ({validation.checks_passed}/{validation.checks_total} passed)</h4>
+                    {validation.errors.length > 0 && (
+                        <ul className="pipeline-output__errors">
+                            {validation.errors.map((e, i) => (
+                                <li key={i} className="pipeline-output__error">
+                                    <code>{e.code}</code>: {e.message}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {validation.warnings.length > 0 && (
+                        <ul className="pipeline-output__warnings">
+                            {validation.warnings.map((w, i) => (
+                                <li key={i} className="pipeline-output__warning">
+                                    <code>{w.code}</code>: {w.message}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {validation.errors.length === 0 && validation.warnings.length === 0 && (
+                        <p className="pipeline-output__success">All checks passed.</p>
+                    )}
+                </section>
+            )}
 
             {/* Corrections */}
-            {corrections_applied.length > 0 && (
+            {corrections_applied && corrections_applied.length > 0 && (
                 <section className="pipeline-output__section">
                     <h4>Auto-Corrections Applied</h4>
                     <ul>

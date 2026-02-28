@@ -60,17 +60,24 @@ export default function SchematicCanvas() {
 
         const app = new Application();
         let destroyed = false;
+        let initialized = false;
 
         const init = async () => {
-            await app.init({
-                background: DEFAULT_THEME.background,
-                resizeTo: containerRef.current!,
-                antialias: true,
-                resolution: window.devicePixelRatio || 1,
-                autoDensity: true,
-            });
+            try {
+                await app.init({
+                    background: DEFAULT_THEME.background,
+                    resizeTo: containerRef.current!,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true,
+                });
+            } catch (err) {
+                console.warn('[SchematicCanvas] PixiJS init failed:', err);
+                return;
+            }
 
             if (destroyed) return;
+            initialized = true;
 
             containerRef.current!.innerHTML = '';
             containerRef.current!.appendChild(app.canvas as HTMLCanvasElement);
@@ -113,7 +120,13 @@ export default function SchematicCanvas() {
 
         return () => {
             destroyed = true;
-            app.destroy(true);
+            if (initialized) {
+                try {
+                    app.destroy(true);
+                } catch {
+                    // PixiJS v8 may throw if resize observer wasn't set up
+                }
+            }
             appRef.current = null;
         };
     }, []);

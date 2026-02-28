@@ -2,6 +2,7 @@ import { useDesignStore } from './store/designStore';
 import DesignInput from './components/DesignInput';
 import PipelineOutput from './components/PipelineOutput';
 import SchematicCanvas from './canvas/SchematicCanvas';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/index.css';
 
 export default function App() {
@@ -34,9 +35,21 @@ export default function App() {
         </aside>
 
         <section className="app__canvas">
-          <SchematicCanvas />
+          <ErrorBoundary
+            fallback={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9999bb', fontFamily: 'Inter, sans-serif' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '18px', marginBottom: '8px' }}>⚠ Canvas failed to load</p>
+                  <p style={{ fontSize: '13px', color: '#666688' }}>WebGL may not be available. Check browser console for details.</p>
+                </div>
+              </div>
+            }
+          >
+            <SchematicCanvas />
+          </ErrorBoundary>
         </section>
       </main>
     </div>
   );
 }
+

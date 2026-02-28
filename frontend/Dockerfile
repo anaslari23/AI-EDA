@@ -16,23 +16,14 @@ RUN npm run build
 # ─── Production stage (static files served by Nginx) ───
 FROM nginx:1.25-alpine AS production
 
-# Remove default config
+# Remove default config, copy our SPA config
 RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# SPA fallback config (Nginx uses the reverse proxy config from docker-compose)
-RUN echo 'server { \
-    listen 80; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-    try_files $uri $uri/ /index.html; \
-    } \
-    }' > /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD wget -q --spider http://localhost:80/ || exit 1

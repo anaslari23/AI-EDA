@@ -1,5 +1,7 @@
 """Async SQLAlchemy database session and engine configuration."""
 
+import logging
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -8,6 +10,10 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+_db_available = False
 
 
 class Base(DeclarativeBase):
@@ -50,11 +56,30 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """Create all tables. Called during app startup."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Create all tables. Gracefully skips if DB is unreachable."""
+    global _db_available
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _db_available = True
+        logger.info("Database connected and tables created.")
+    except Exception as exc:
+        _db_available = False
+        logger.warning(
+            "Database unavailable — running in API-only mode. "
+            "Project/circuit CRUD will not work. Error: %s",
+            exc,
+        )
 
 
 async def close_db() -> None:
     """Dispose engine. Called during app shutdown."""
-    await engine.dispose()
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
+
+
+def is_db_available() -> bool:
+    """Check if the database connection was established."""
+    return _db_available
