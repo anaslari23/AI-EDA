@@ -518,5 +518,5 @@ This project is open source. See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  Built with ⚡ by <a href="https://github.com/anaslari23">anaslari23</a>
+  Built by <a href="https://github.com/anaslari23">anaslari23</a>
 </p>
