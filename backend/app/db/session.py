@@ -1,6 +1,7 @@
 """Async SQLAlchemy database session and engine configuration."""
 
 import logging
+import subprocess
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 
 from app.config import get_settings
 
@@ -56,13 +58,21 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """Create all tables. Gracefully skips if DB is unreachable."""
+    """Check DB connectivity and optionally run migrations."""
     global _db_available
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+
+        if settings.auto_migrate_on_startup:
+            subprocess.run(
+                ["alembic", "upgrade", "head"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         _db_available = True
-        logger.info("Database connected and tables created.")
+        logger.info("Database connected.")
     except Exception as exc:
         _db_available = False
         logger.warning(

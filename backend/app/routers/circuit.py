@@ -6,6 +6,7 @@ No validation endpoints — validation runs in the frontend.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
@@ -17,6 +18,8 @@ from app.schemas.circuit_crud import (
     CircuitCreate,
     CircuitUpdateGraph,
     CircuitGenerateRequest,
+    CircuitSnapshotSaveRequest,
+    CircuitSnapshotSaveResponse,
     CircuitResponse,
 )
 
@@ -64,6 +67,22 @@ async def update_circuit_graph(
     """Persist a graph snapshot from the frontend. Regenerates BOM/PCB."""
     circuit = await service.update_graph(circuit_id, data)
     return CircuitResponse.model_validate(circuit)
+
+
+@router.post("/{circuit_id}/snapshots", response_model=CircuitSnapshotSaveResponse)
+async def save_circuit_snapshot(
+    circuit_id: uuid.UUID,
+    data: CircuitSnapshotSaveRequest,
+    service: CircuitService = Depends(_get_service),
+):
+    """Persist an explicit frontend snapshot without server-side circuit logic."""
+    circuit = await service.save_snapshot(circuit_id, data.graph, data.base_version)
+    return CircuitSnapshotSaveResponse(
+        circuit_id=circuit.id,
+        version=circuit.version,
+        saved_at=datetime.now(timezone.utc),
+        label=data.label,
+    )
 
 
 @router.post("/{circuit_id}/generate", response_model=CircuitResponse)

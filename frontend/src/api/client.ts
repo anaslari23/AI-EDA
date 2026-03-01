@@ -17,7 +17,6 @@ import axios, {
 import type {
     PipelineResult,
     CircuitGraph,
-    ValidationResult,
     BOMEntry,
     PCBConstraints,
 } from '../types/schema';
@@ -91,7 +90,7 @@ export interface CircuitResponse {
     version: number;
     graph_data: CircuitGraph | null;
     is_valid: boolean;
-    validation_errors: ValidationResult | null;
+    validation_errors: Record<string, unknown> | null;
     intent_data: Record<string, unknown> | null;
     components_data: Record<string, unknown> | null;
     bom_data: {
@@ -105,15 +104,11 @@ export interface CircuitResponse {
     updated_at: string;
 }
 
-export interface CircuitValidationResponse {
+export interface CircuitSnapshotSaveResponse {
     circuit_id: string;
-    validation: ValidationResult;
-    bom: {
-        bom: BOMEntry[];
-        total_estimated_cost: string;
-        component_count: number;
-    } | null;
-    pcb_constraints: PCBConstraints | null;
+    version: number;
+    saved_at: string;
+    label: string | null;
 }
 
 export interface HealthResponse {
@@ -292,23 +287,15 @@ class ApiClient {
         await this.http.delete(`/api/circuits/${circuitId}`);
     }
 
-    // ─── Validation ───
-
-    async validateCircuit(
-        circuitId: string
-    ): Promise<CircuitValidationResponse> {
-        const { data } = await this.http.post<CircuitValidationResponse>(
-            `/api/validate/circuits/${circuitId}`
-        );
-        return data;
-    }
-
-    async validateInline(
-        graph: CircuitGraph
-    ): Promise<ValidationResult> {
-        const { data } = await this.http.post<ValidationResult>(
-            '/api/validate/inline',
-            graph
+    async saveCircuitSnapshot(
+        circuitId: string,
+        graph: CircuitGraph,
+        baseVersion: number,
+        label?: string,
+    ): Promise<CircuitSnapshotSaveResponse> {
+        const { data } = await this.http.post<CircuitSnapshotSaveResponse>(
+            `/api/circuits/${circuitId}/snapshots`,
+            { graph, base_version: baseVersion, label },
         );
         return data;
     }

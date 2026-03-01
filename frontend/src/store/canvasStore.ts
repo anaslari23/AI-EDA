@@ -42,6 +42,7 @@ interface CanvasState {
 interface CanvasActions {
     // ─── Graph mutations ───
     setNodes: (nodes: CanvasNode[]) => void;
+    setEdges: (edges: Edge[]) => void;
     addNode: (node: CanvasNode) => void;
     removeNode: (nodeId: string) => void;
     moveNode: (nodeId: string, position: Position) => void;
@@ -118,6 +119,25 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     // ─── Graph Mutations ───
 
     setNodes: (nodes) => set({ nodes, renderTick: get().renderTick + 1 }),
+
+    setEdges: (edges) =>
+        set((s) => {
+            const connected = new Set<string>();
+            for (const edge of edges) {
+                connected.add(edge.sourcePinId);
+                connected.add(edge.targetPinId);
+            }
+
+            const nodes = s.nodes.map((node) => ({
+                ...node,
+                pins: node.pins.map((pin) => ({
+                    ...pin,
+                    connected: connected.has(pin.id),
+                })),
+            }));
+
+            return { edges, nodes, renderTick: s.renderTick + 1 };
+        }),
 
     addNode: (node) =>
         set((s) => ({ nodes: [...s.nodes, node], renderTick: s.renderTick + 1 })),

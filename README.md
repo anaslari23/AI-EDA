@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <em>v1.1 — Browser-native validation, AI wire assist, parametric evaluation</em>
+</p>
+
+<p align="center">
   Describe your hardware in plain English. Get a validated circuit design in seconds.
 </p>
 
@@ -42,10 +46,16 @@ graph TB
         UI[Design Input Form]
         Canvas[PixiJS Schematic Canvas]
         Output[Pipeline Output + BOM]
-        Store[Zustand State Store]
+        Store[Zustand State Stores]
+        AIWire[AI Wire Assist]
+        Constraints[Electrical Constraints Engine]
+        Params[Parametric Evaluator]
         UI --> Store
         Store --> Canvas
         Store --> Output
+        Store --> AIWire
+        Store --> Constraints
+        Store --> Params
     end
 
     subgraph API["REST API Layer"]
@@ -61,7 +71,6 @@ graph TB
             E1["Engine 1: Intent Parser"]
             E2["Engine 2: Component Selector"]
             E3["Engine 3: Circuit Generator"]
-            E4["Engine 4: Validation Engine"]
         end
         subgraph LLM["LLM Orchestrator"]
             Prompts[Prompt Templates]
@@ -76,9 +85,9 @@ graph TB
         subgraph Services["Services"]
             BOM[BOM Generator]
             PCB[PCB Constraint Engine]
-            Correction[Correction Engine]
             ProjSvc[Project Service]
             CircSvc[Circuit Service]
+            Alembic[DB Migrations]
         end
     end
 
@@ -98,7 +107,7 @@ graph TB
 
 ## ⚙️ AI Pipeline
 
-The core of AI EDA is a 4-engine pipeline that converts natural language into validated hardware designs. It operates in two modes: **rule-based** (deterministic, no API key needed) and **LLM-powered** (uses GPT-4o or any OpenAI-compatible model for more sophisticated parsing).
+The core of AI EDA is a 3-engine backend pipeline that converts natural language into hardware designs, with validation now handled entirely in the browser. It operates in two modes: **rule-based** (deterministic, no API key needed) and **LLM-powered** (uses GPT-4o or any OpenAI-compatible model for more sophisticated parsing).
 
 ```mermaid
 flowchart LR
@@ -138,8 +147,9 @@ Builds a complete circuit graph with:
 - Decoupling capacitor placement per IC
 - Reverse polarity protection at battery input
 
-### Engine 4 — Validation Engine
-Runs **6 electrical validation checks** before the design is considered safe:
+### Browser-Native Validation (Frontend)
+
+Validation has been moved entirely to the frontend for real-time feedback. The **Electrical Constraints Engine** (`frontend/src/engine/constraints/`) runs validation checks in-browser:
 
 | Check | Code | Severity | Description |
 |---|---|---|---|
@@ -150,8 +160,11 @@ Runs **6 electrical validation checks** before the design is considered safe:
 | I2C Pull-ups | `W_MISSING_PULLUP` | Warning | Pull-up resistors on SDA/SCL lines |
 | GPIO Overcurrent | `W_GPIO_OVERCURRENT_RISK` | Warning | No actuators directly on GPIO pins |
 
-### Correction Engine
-When validation fails, the correction engine provides automated fix suggestions with specific component recommendations and wiring changes.
+### Parametric Evaluation Engine
+The **Parametric Evaluator** (`frontend/src/engine/parameters/`) provides dependency-graph-based parameter evaluation, allowing component parameters to propagate through the circuit graph in real time.
+
+### AI Wire Assist
+The **AI Wire Assist** component (`frontend/src/components/AIWireAssist.tsx`) uses the AI integration manager to suggest intelligent wire routing and connections between components.
 
 ---
 
@@ -197,14 +210,15 @@ sequenceDiagram
 
 ## 🖥️ Frontend
 
-The frontend is built with React 19, TypeScript, and Vite, featuring a WebGL-powered schematic canvas:
+The frontend is built with React 19, TypeScript, and Vite, featuring a WebGL-powered schematic canvas and browser-native circuit engines:
 
 ```mermaid
 graph LR
     subgraph UI["React UI Layer"]
-        DI[DesignInput] --> Store[Zustand Store]
+        DI[DesignInput] --> Store[Zustand Stores]
         Store --> PO[PipelineOutput]
         Store --> SC[SchematicCanvas]
+        Store --> AIW[AIWireAssist]
     end
 
     subgraph Canvas["PixiJS Rendering Engine"]
@@ -216,6 +230,13 @@ graph LR
 
     SC --> Canvas
 
+    subgraph Engines["Browser-Native Engines"]
+        CS[CircuitStore] --> NetOps[Net Operations]
+        CS --> Constraints[Electrical Constraints]
+        CS --> Params[Parametric Evaluator]
+        AIM[AI Integration Manager]
+    end
+
     subgraph Interaction["User Interaction"]
         Pan[Pan & Zoom]
         Hover[Hover Tooltips]
@@ -223,6 +244,7 @@ graph LR
     end
 
     Canvas --> Interaction
+    Store --> Engines
 ```
 
 - **SchematicCanvas**: WebGL-rendered circuit visualization using PixiJS 8
@@ -230,7 +252,12 @@ graph LR
 - **NodeRenderer**: Component symbols with pin labels and type-based coloring
 - **WireRenderer**: Orthogonal wire routing between connected pins
 - **SnapEngine**: Grid-snapped positioning for precise placement
-- **Zustand Store**: Lightweight reactive state management
+- **CircuitStore**: Full circuit graph state with Immer-powered immutable updates
+- **Net Operations**: Net creation, merging, splitting, and voltage domain tagging
+- **Electrical Constraints**: Real-time validation running in-browser
+- **Parametric Evaluator**: Dependency-graph based parameter propagation
+- **AI Integration Manager**: LLM-powered wire routing suggestions
+- **Zustand Stores**: Modular state management (design, canvas, operations, performance)
 
 ---
 
@@ -324,11 +351,8 @@ AI-EDA/
 │   │   │   ├── component_selector.py   # Engine 2: Intent → Components
 │   │   │   ├── circuit_generator.py    # Engine 3: Components → CircuitGraph
 │   │   │   ├── orchestrator.py         # LLM orchestrator (OpenAI-compatible)
-│   │   │   ├── prompts.py             # Prompt templates for all 4 phases
+│   │   │   ├── prompts.py             # Prompt templates for all phases
 │   │   │   └── llm_schemas.py         # JSON schema validators
-│   │   ├── validation/
-│   │   │   ├── engine.py              # Engine 4: Electrical validation (6 checks)
-│   │   │   └── correction.py          # Auto-fix suggestions
 │   │   ├── pcb/                       # PCB export tools
 │   │   │   ├── netlist_generator.py   # KiCad netlist (.net)
 │   │   │   ├── kicad_writer.py        # KiCad schematic (.kicad_sch)
@@ -348,7 +372,6 @@ AI-EDA/
 │   │   │   ├── components.py          # /api/components — component DB
 │   │   │   ├── project.py             # /api/projects — project CRUD
 │   │   │   ├── circuit.py             # /api/circuits — circuit CRUD + generation
-│   │   │   ├── validation.py          # /api/validate — validation endpoints
 │   │   │   └── design.py              # /api/design — legacy
 │   │   ├── services/                  # Business logic
 │   │   │   ├── pipeline.py            # Pipeline orchestration
@@ -361,6 +384,12 @@ AI-EDA/
 │   │   ├── bom/                       # BOM generation
 │   │   ├── config.py                  # App settings (DB, Redis, LLM)
 │   │   └── main.py                    # FastAPI app factory + lifespan
+│   ├── alembic/                       # Database migrations (Alembic)
+│   │   ├── env.py
+│   │   └── versions/
+│   ├── scripts/
+│   │   └── setup_postgres.sql         # PostgreSQL setup script
+│   ├── alembic.ini                    # Alembic configuration
 │   ├── data/
 │   │   └── approved_components.json   # Component database
 │   ├── tests/                         # Pytest test suite
@@ -368,6 +397,10 @@ AI-EDA/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
+│   │   ├── ai-integration/            # AI integration layer
+│   │   │   ├── AIIntegrationManager.ts # LLM-powered assistance
+│   │   │   ├── types.ts              # AI integration types
+│   │   │   └── index.ts
 │   │   ├── canvas/                    # WebGL schematic renderer
 │   │   │   ├── SchematicCanvas.tsx     # Main canvas component
 │   │   │   ├── renderer/
@@ -382,10 +415,34 @@ AI-EDA/
 │   │   │   └── types.ts              # Canvas type definitions
 │   │   ├── components/                # React UI components
 │   │   │   ├── DesignInput.tsx        # NL input form
-│   │   │   └── PipelineOutput.tsx     # Results + BOM display
+│   │   │   ├── PipelineOutput.tsx     # Results + BOM display
+│   │   │   └── AIWireAssist.tsx       # AI-powered wire routing UI
+│   │   ├── engine/                    # Browser-native circuit engines
+│   │   │   ├── ai/                    # AI diff & merge engines
+│   │   │   ├── constraints/           # Electrical constraint validation
+│   │   │   │   ├── electricalConstraints.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── graph/                 # Circuit graph operations
+│   │   │   │   ├── circuitStore.ts    # Full circuit state management
+│   │   │   │   ├── netOperations.ts   # Net merge/split/domain tagging
+│   │   │   │   └── pinValidation.ts   # Pin-level validation
+│   │   │   └── parameters/            # Parametric evaluation
+│   │   │       ├── dependencyGraph.ts # Parameter dependency tracking
+│   │   │       ├── evaluator.ts       # Expression evaluation
+│   │   │       ├── types.ts
+│   │   │       └── index.ts
 │   │   ├── store/                     # Zustand state management
 │   │   │   ├── designStore.ts         # Design pipeline state
-│   │   │   └── canvasStore.ts         # Canvas interaction state
+│   │   │   ├── canvasStore.ts         # Canvas interaction state
+│   │   │   ├── operationStore.ts      # Circuit operation state
+│   │   │   ├── performanceStore.ts    # Performance monitoring
+│   │   │   ├── operations.ts          # Operation definitions
+│   │   │   └── index.ts              # Store barrel export
+│   │   ├── workers/                   # Web Worker infrastructure
+│   │   │   ├── WorkerManager.ts       # Worker lifecycle management
+│   │   │   ├── circuit.worker.ts      # Background circuit processing
+│   │   │   ├── protocol.ts            # Worker message protocol
+│   │   │   └── useWorker.ts           # React hook for workers
 │   │   ├── api/client.ts             # API client
 │   │   ├── hooks/                    # Custom React hooks
 │   │   ├── types/                    # TypeScript type definitions
@@ -395,6 +452,9 @@ AI-EDA/
 │   ├── Dockerfile
 │   ├── package.json
 │   └── vite.config.ts
+├── docs/                              # Architecture documentation
+│   ├── ARCHITECTURE_BROWSER_NATIVE.md
+│   └── DB_MIGRATIONS.md
 ├── docker-compose.yml                 # Full stack orchestration
 ├── .env.template                      # Environment variable template
 └── README.md
@@ -433,18 +493,13 @@ AI-EDA/
 | `GET` | `/api/circuits/projects/{id}/circuits` | List all circuits in project |
 | `DELETE` | `/api/circuits/{id}` | Delete a circuit |
 
-### Validation
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/validate/circuits/{id}` | Validate persisted circuit + update state |
-| `POST` | `/api/validate/inline` | Validate circuit graph (stateless) |
-
 ### Health
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/health` | Service health check |
+
+> **Note:** Validation endpoints have been removed from the backend. Validation is now performed entirely in the browser via the Electrical Constraints Engine for real-time feedback.
 
 Full interactive documentation at [`/docs`](http://localhost:8000/docs) (Swagger) and [`/redoc`](http://localhost:8000/redoc).
 
@@ -485,6 +540,27 @@ Copy `.env.template` to `.env` and configure:
 
 ---
 
+## 🗄️ Database Migrations
+
+AI EDA uses **Alembic** for database schema migrations:
+
+```bash
+cd backend
+
+# Run all pending migrations
+alembic upgrade head
+
+# Create a new migration after model changes
+alembic revision --autogenerate -m "describe your change"
+
+# Check current migration status
+alembic current
+```
+
+See [`docs/DB_MIGRATIONS.md`](docs/DB_MIGRATIONS.md) for detailed migration workflow.
+
+---
+
 ## 🧪 Running Tests
 
 ```bash
@@ -496,12 +572,17 @@ pytest tests/ -v
 
 ## 🗺️ Roadmap
 
-- [x] Rule-based AI pipeline (4 engines)
+- [x] Rule-based AI pipeline (3 backend engines)
 - [x] LLM-powered pipeline with structured output
 - [x] WebGL schematic canvas with pan/zoom
 - [x] KiCad netlist + schematic export
 - [x] Gerber fabrication file generation
 - [x] Project & circuit persistence (PostgreSQL)
+- [x] Browser-native electrical validation
+- [x] Parametric evaluation engine
+- [x] AI wire assist
+- [x] Database migrations (Alembic)
+- [x] Web Worker circuit processing
 - [ ] Real-time collaborative editing
 - [ ] PCB layout auto-routing
 - [ ] Component procurement integration (Mouser/DigiKey API)

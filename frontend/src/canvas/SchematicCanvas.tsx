@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Application, Graphics, Container } from 'pixi.js';
 import { useCanvasStore } from '../store/canvasStore';
 import { useDesignStore } from '../store/designStore';
+import { useWorkerStore } from '../workers/useWorker';
+import { usePerformanceStore } from '../store/performanceStore';
 import { renderGrid } from './renderer/GridRenderer';
 import {
     renderNode,
@@ -12,7 +14,7 @@ import {
 import { renderEdges, renderDrawingWire } from './renderer/WireRenderer';
 import { findSnapTarget, hitTestPin, hitTestNode } from './interaction/SnapEngine';
 import { screenToWorld } from './utils/routing';
-import { circuitGraphToCanvasNodes } from './utils/converter';
+import { circuitGraphToCanvas } from './utils/converter';
 import { DEFAULT_THEME } from './types';
 
 export default function SchematicCanvas() {
@@ -36,14 +38,27 @@ export default function SchematicCanvas() {
     const dragStartWorld = useRef({ x: 0, y: 0 });
     const dragNodeId = useRef<string | null>(null);
     const lastPointerPos = useRef({ x: 0, y: 0 });
+    const lastFrameTime = useRef<number | null>(null);
 
     // Sync pipeline result → canvas nodes
     const pipelineResult = useDesignStore((s) => s.pipelineResult);
     useEffect(() => {
         if (!pipelineResult?.circuit) return;
-        const canvasNodes = circuitGraphToCanvasNodes(pipelineResult.circuit);
-        useCanvasStore.getState().setNodes(canvasNodes);
-        useCanvasStore.getState().recalculateEdgeRoutes();
+        const { nodes, edges } = circuitGraphToCanvas(pipelineResult.circuit);
+        useCanvasStore.getState().setNodes(nodes);
+        useCanvasStore.getState().setEdges(edges);
+
+        // Heavy graph compute runs in workers by default for responsiveness.
+        const worker = useWorkerStore.getState();
+        const serializableGraph = {
+            nodes: pipelineResult.circuit.nodes,
+            edges: pipelineResult.circuit.edges,
+            power_rails: pipelineResult.circuit.power_rails,
+            ground_net: pipelineResult.circuit.ground_net,
+        };
+        void worker.validate(serializableGraph);
+        void worker.mergeNets(serializableGraph);
+        void worker.analyzeCurrent(serializableGraph);
     }, [pipelineResult]);
 
     // Subscribe to store changes
@@ -135,6 +150,11 @@ export default function SchematicCanvas() {
     const renderFrame = useCallback(() => {
         const app = appRef.current;
         if (!app) return;
+        const now = performance.now();
+        if (lastFrameTime.current != null) {
+            usePerformanceStore.getState().recordFrame(now - lastFrameTime.current);
+        }
+        lastFrameTime.current = now;
 
         const state = storeRef.current;
         const { viewport, nodes, edges, wireDrawing, hoveredPinId } = state;

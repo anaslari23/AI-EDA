@@ -1,232 +1,130 @@
 /**
- * useValidation — WebSocket hook for live circuit validation.
+ * useValidation — local worker-backed circuit validation.
  *
- * Features:
- * - Persistent WebSocket connection to backend
- * - Auto-reconnect with exponential backoff
- * - Debounced graph sending (avoids flooding on rapid edits)
- * - Typed validation results pushed to canvas store
- * - Fallback to HTTP polling if WebSocket unavailable
+ * No backend validation endpoint usage.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-import { apiClient } from '../api/client';
-import { WS_BASE } from '../api/client';
 import type { CircuitGraph, ValidationResult } from '../types/schema';
+import type { SerializableCircuitGraph } from '../workers/protocol';
+import { useWorkerStore } from '../workers/useWorker';
 
-// ─── Config ───
-
-const WS_VALIDATION_PATH = '/ws/validate';
-const DEBOUNCE_MS = 500;
-const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30_000;
-const MAX_RETRIES = 10;
-
-// ─── Types ───
+const DEBOUNCE_MS = 300;
 
 export interface ValidationState {
-    status: 'idle' | 'connecting' | 'validating' | 'done' | 'error';
-    result: ValidationResult | null;
-    lastValidated: number | null;
-    wsConnected: boolean;
-    error: string | null;
+  status: 'idle' | 'validating' | 'done' | 'error';
+  result: ValidationResult | null;
+  lastValidated: number | null;
+  wsConnected: boolean;
+  error: string | null;
 }
 
-interface WsValidationMessage {
-    type: 'validation_result' | 'error';
-    data: ValidationResult | { message: string };
+function toSerializableGraph(graph: CircuitGraph): SerializableCircuitGraph {
+  return {
+    nodes: graph.nodes,
+    edges: graph.edges,
+    power_rails: graph.power_rails,
+    ground_net: graph.ground_net,
+  };
 }
 
-// ─── Hook ───
+function toLegacyValidationResult(
+  issues: Array<{ type: string; severity: 'warning' | 'error'; message: string; affectedNodes: string[] }>,
+): ValidationResult {
+  const errors = issues.filter((i) => i.severity === 'error').map((i) => ({
+    code: i.type,
+    severity: 'error' as const,
+    message: i.message,
+    node_ids: i.affectedNodes,
+    suggestion: null,
+  }));
 
-export function useValidation(_circuitId?: string) {
-    const wsRef = useRef<WebSocket | null>(null);
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const retryCountRef = useRef(0);
-    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warnings = issues.filter((i) => i.severity === 'warning').map((i) => ({
+    code: i.type,
+    severity: 'warning' as const,
+    message: i.message,
+    node_ids: i.affectedNodes,
+    suggestion: null,
+  }));
 
-    const [state, setState] = useState<ValidationState>({
-        status: 'idle',
-        result: null,
-        lastValidated: null,
-        wsConnected: false,
-        error: null,
-    });
+  return {
+    status: errors.length > 0 ? 'INVALID' : 'VALID',
+    errors,
+    warnings,
+    checks_passed: Math.max(0, 8 - errors.length - warnings.length),
+    checks_total: 8,
+  };
+}
 
-    // ─ Connect WebSocket
-    const connect = useCallback(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) return;
+export function useValidation() {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-        setState((s) => ({ ...s, status: 'connecting', error: null }));
+  const [state, setState] = useState<ValidationState>({
+    status: 'idle',
+    result: null,
+    lastValidated: null,
+    wsConnected: false,
+    error: null,
+  });
 
-        const url = `${WS_BASE}${WS_VALIDATION_PATH}`;
-        const ws = new WebSocket(url);
+  const validateGraph = useCallback((graph: CircuitGraph) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-        ws.onopen = () => {
-            retryCountRef.current = 0;
-            setState((s) => ({
-                ...s,
-                status: 'idle',
-                wsConnected: true,
-                error: null,
-            }));
-        };
+    debounceRef.current = setTimeout(async () => {
+      setState((s) => ({ ...s, status: 'validating', error: null }));
 
-        ws.onmessage = (event) => {
-            try {
-                const msg: WsValidationMessage = JSON.parse(event.data);
+      try {
+        const worker = useWorkerStore.getState();
+        await worker.validate(toSerializableGraph(graph));
 
-                if (msg.type === 'validation_result') {
-                    const result = msg.data as ValidationResult;
-                    setState((s) => ({
-                        ...s,
-                        status: 'done',
-                        result,
-                        lastValidated: Date.now(),
-                        error: null,
-                    }));
-                } else if (msg.type === 'error') {
-                    const errData = msg.data as { message: string };
-                    setState((s) => ({
-                        ...s,
-                        status: 'error',
-                        error: errData.message,
-                    }));
-                }
-            } catch {
-                // Ignore malformed messages
-            }
-        };
-
-        ws.onerror = () => {
-            setState((s) => ({
-                ...s,
-                status: 'error',
-                wsConnected: false,
-                error: 'WebSocket connection error',
-            }));
-        };
-
-        ws.onclose = () => {
-            wsRef.current = null;
-            setState((s) => ({ ...s, wsConnected: false }));
-
-            // Auto-reconnect with exponential backoff
-            if (retryCountRef.current < MAX_RETRIES) {
-                const delay = Math.min(
-                    RECONNECT_BASE_MS * 2 ** retryCountRef.current,
-                    RECONNECT_MAX_MS
-                );
-                retryCountRef.current++;
-                reconnectTimerRef.current = setTimeout(connect, delay);
-            }
-        };
-
-        wsRef.current = ws;
-    }, []);
-
-    // ─ Disconnect
-    const disconnect = useCallback(() => {
-        if (reconnectTimerRef.current) {
-            clearTimeout(reconnectTimerRef.current);
-            reconnectTimerRef.current = null;
+        const workerState = useWorkerStore.getState();
+        if (workerState.lastError) {
+          setState((s) => ({ ...s, status: 'error', error: workerState.lastError }));
+          return;
         }
-        if (debounceRef.current) {
-            clearTimeout(debounceRef.current);
-            debounceRef.current = null;
-        }
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-        }
-        retryCountRef.current = MAX_RETRIES; // Prevent reconnect
-        setState((s) => ({ ...s, wsConnected: false, status: 'idle' }));
-    }, []);
 
-    // ─ Send graph for validation (debounced)
-    const validateGraph = useCallback(
-        (graph: CircuitGraph) => {
-            if (debounceRef.current) {
-                clearTimeout(debounceRef.current);
-            }
+        setState((s) => ({
+          ...s,
+          status: 'done',
+          result: toLegacyValidationResult(workerState.validationIssues),
+          lastValidated: Date.now(),
+          error: null,
+        }));
+      } catch (error) {
+        setState((s) => ({
+          ...s,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error),
+        }));
+      }
+    }, DEBOUNCE_MS);
+  }, []);
 
-            debounceRef.current = setTimeout(() => {
-                setState((s) => ({ ...s, status: 'validating' }));
+  const validatePersisted = useCallback(async (graph: CircuitGraph) => {
+    validateGraph(graph);
+    return null;
+  }, [validateGraph]);
 
-                // Try WebSocket first
-                if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(
-                        JSON.stringify({ type: 'validate', data: graph })
-                    );
-                    return;
-                }
+  const connect = useCallback(() => {
+    setState((s) => ({ ...s, wsConnected: false }));
+  }, []);
 
-                // Fallback: HTTP inline validation
-                apiClient
-                    .validateInline(graph)
-                    .then((result) => {
-                        setState((s) => ({
-                            ...s,
-                            status: 'done',
-                            result,
-                            lastValidated: Date.now(),
-                            error: null,
-                        }));
-                    })
-                    .catch((err) => {
-                        setState((s) => ({
-                            ...s,
-                            status: 'error',
-                            error: err.message || 'Validation failed',
-                        }));
-                    });
-            }, DEBOUNCE_MS);
-        },
-        []
-    );
+  const disconnect = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setState((s) => ({ ...s, status: 'idle', wsConnected: false }));
+  }, []);
 
-    // ─ Validate persisted circuit by ID
-    const validatePersisted = useCallback(
-        async (id: string) => {
-            setState((s) => ({ ...s, status: 'validating' }));
-            try {
-                const response = await apiClient.validateCircuit(id);
-                setState((s) => ({
-                    ...s,
-                    status: 'done',
-                    result: response.validation,
-                    lastValidated: Date.now(),
-                    error: null,
-                }));
-                return response;
-            } catch (err: unknown) {
-                const message =
-                    err instanceof Error ? err.message : 'Validation failed';
-                setState((s) => ({
-                    ...s,
-                    status: 'error',
-                    error: message,
-                }));
-                return null;
-            }
-        },
-        []
-    );
-
-    // ─ Lifecycle
-    useEffect(() => {
-        connect();
-        return () => disconnect();
-    }, [connect, disconnect]);
-
-    return {
-        ...state,
-        validateGraph,
-        validatePersisted,
-        connect,
-        disconnect,
-    };
+  return {
+    ...state,
+    validateGraph,
+    validatePersisted,
+    connect,
+    disconnect,
+  };
 }
 
 export default useValidation;

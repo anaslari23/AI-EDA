@@ -8,9 +8,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.circuit import CircuitGraph
-from app.schemas.validation import ValidationResult
-from app.schemas.bom import BOM
-from app.schemas.pcb import PCBConstraints
 
 
 # ─── Request Schemas ───
@@ -33,6 +30,29 @@ class CircuitGenerateRequest(BaseModel):
     description: str = Field(..., min_length=10)
 
 
+class CircuitSnapshotSaveRequest(BaseModel):
+    """Persist a browser-authored circuit snapshot."""
+
+    graph: CircuitGraph
+    base_version: int = Field(
+        ...,
+        ge=0,
+        description="Frontend version expected by caller for optimistic locking",
+    )
+    label: str | None = Field(
+        default=None,
+        max_length=120,
+        description="Optional snapshot label for future history UI",
+    )
+
+
+class CircuitSnapshotSaveResponse(BaseModel):
+    circuit_id: uuid.UUID
+    version: int
+    saved_at: datetime
+    label: str | None = None
+
+
 # ─── Response Schemas ───
 
 
@@ -53,10 +73,3 @@ class CircuitResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class CircuitValidationResponse(BaseModel):
-    circuit_id: uuid.UUID
-    validation: ValidationResult
-    bom: BOM | None = None
-    pcb_constraints: PCBConstraints | None = None

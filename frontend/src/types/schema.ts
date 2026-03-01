@@ -123,10 +123,10 @@ export interface PipelineResult {
         protection: unknown[];
     };
     circuit: CircuitGraph;
-    validation: ValidationResult;
-    corrections_applied: string[];
+    validation?: ValidationResult;
+    corrections_applied?: string[];
     pcb_constraints: PCBConstraints | null;
     bom: { bom: BOMEntry[]; total_estimated_cost: string; component_count: number } | null;
     pipeline_status: string;
-    iterations: number;
+    iterations?: number;
 }

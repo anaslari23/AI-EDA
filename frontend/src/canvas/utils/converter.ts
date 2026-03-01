@@ -1,6 +1,7 @@
-import type { Position, CanvasNode, Pin, Size, NodeType } from '../types';
+import type { Position, CanvasNode, Pin, Size, NodeType, Edge } from '../types';
 import { PIN_SPACING, NODE_MIN_WIDTH, NODE_MIN_HEIGHT } from '../types';
 import type { CircuitGraph } from '../../types/schema';
+import { computeOrthogonalRoute } from './routing';
 
 /**
  * Convert backend CircuitGraph into canvas CanvasNode[] with calculated pin layouts.
@@ -36,6 +37,61 @@ export function circuitGraphToCanvasNodes(
     }
 
     return nodes;
+}
+
+/**
+ * Convert backend graph into canvas nodes + canvas edges.
+ * This preserves AI-generated circuit connectivity from pipeline output.
+ */
+export function circuitGraphToCanvas(
+    graph: CircuitGraph
+): { nodes: CanvasNode[]; edges: Edge[] } {
+    const nodes = circuitGraphToCanvasNodes(graph);
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const connectedPins = new Set<string>();
+    const edges: Edge[] = [];
+
+    for (const edge of graph.edges) {
+        const srcPinId = `${edge.source_node}_${edge.source_pin}`;
+        const tgtPinId = `${edge.target_node}_${edge.target_pin}`;
+        const srcNode = nodeById.get(edge.source_node);
+        const tgtNode = nodeById.get(edge.target_node);
+        if (!srcNode || !tgtNode) continue;
+
+        const srcPin = srcNode.pins.find((pin) => pin.id === srcPinId);
+        const tgtPin = tgtNode.pins.find((pin) => pin.id === tgtPinId);
+        if (!srcPin || !tgtPin) continue;
+
+        const srcWorld = { x: srcNode.position.x + srcPin.offset.x, y: srcNode.position.y + srcPin.offset.y };
+        const tgtWorld = { x: tgtNode.position.x + tgtPin.offset.x, y: tgtNode.position.y + tgtPin.offset.y };
+        const waypoints = computeOrthogonalRoute(srcWorld, tgtWorld);
+
+        edges.push({
+            id: edge.id,
+            sourcePinId: srcPinId,
+            targetPinId: tgtPinId,
+            sourceNodeId: edge.source_node,
+            targetNodeId: edge.target_node,
+            netName: edge.net_name,
+            signalType: mapSignalType(edge.signal_type),
+            state: 'valid',
+            waypoints,
+            segments: waypointsToSegments(waypoints),
+        });
+
+        connectedPins.add(srcPinId);
+        connectedPins.add(tgtPinId);
+    }
+
+    // Reflect connection status in pin visuals.
+    for (const node of nodes) {
+        node.pins = node.pins.map((pin) => ({
+            ...pin,
+            connected: connectedPins.has(pin.id),
+        }));
+    }
+
+    return { nodes, edges };
 }
 
 function mapNodeType(backendType: string): NodeType {
@@ -74,6 +130,15 @@ function inferSignalType(name: string): Pin['signalType'] {
     if (upper === 'GND') return 'ground';
     if (upper.startsWith('GPIO') || upper.startsWith('SDA') || upper.startsWith('SCL')) return 'digital';
     if (upper === 'AOUT' || upper.startsWith('ADC')) return 'analog';
+    return 'digital';
+}
+
+function mapSignalType(value: string): Pin['signalType'] {
+    const normalized = value.toLowerCase();
+    if (normalized === 'power') return 'power';
+    if (normalized === 'ground') return 'ground';
+    if (normalized === 'analog') return 'analog';
+    if (normalized === 'bus') return 'bus';
     return 'digital';
 }
 
@@ -155,4 +220,14 @@ function layoutByType(count: number): Position[] {
     }
 
     return positions;
+}
+
+function waypointsToSegments(
+    waypoints: Position[]
+): { start: Position; end: Position }[] {
+    const segments: { start: Position; end: Position }[] = [];
+    for (let i = 0; i < waypoints.length - 1; i++) {
+        segments.push({ start: waypoints[i], end: waypoints[i + 1] });
+    }
+    return segments;
 }

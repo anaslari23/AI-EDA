@@ -10,13 +10,10 @@
 import type {
     CircuitState,
     ComponentNode,
-    GraphEdge,
-    Net,
 } from '../graph/models';
 
 import type {
     SuggestionDiff,
-    DiffItem,
     SuggestionPreviewItem,
 } from './types';
 

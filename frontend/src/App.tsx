@@ -1,6 +1,7 @@
 import { useDesignStore } from './store/designStore';
 import DesignInput from './components/DesignInput';
 import PipelineOutput from './components/PipelineOutput';
+import AIWireAssist from './components/AIWireAssist';
 import SchematicCanvas from './canvas/SchematicCanvas';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/index.css';
@@ -26,6 +27,7 @@ export default function App() {
       <main className="app__main">
         <aside className="app__sidebar">
           <DesignInput />
+          <AIWireAssist />
           {error && (
             <div className="app__error">
               <strong>Error:</strong> {error}
@@ -52,4 +54,3 @@ export default function App() {
     </div>
   );
 }
-

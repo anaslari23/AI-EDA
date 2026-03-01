@@ -7,7 +7,7 @@
 
 // ─── Command Types ───
 
-export type WorkerCommand = 'VALIDATE' | 'MERGE' | 'ANALYZE_CURRENT' | 'TRAVERSE';
+export type WorkerCommand = 'VALIDATE' | 'MERGE_NETS' | 'ANALYZE_CURRENT' | 'TRAVERSE';
 
 // ─── Request Messages (Main → Worker) ───
 
@@ -21,7 +21,7 @@ export interface ValidateRequest {
 }
 
 export interface MergeRequest {
-    command: 'MERGE';
+    command: 'MERGE_NETS';
     id: string;
     payload: {
         graph: SerializableCircuitGraph;
@@ -71,7 +71,7 @@ export interface ValidateResponse extends WorkerResponseBase {
 }
 
 export interface MergeResponse extends WorkerResponseBase {
-    command: 'MERGE';
+    command: 'MERGE_NETS';
     result: {
         nets: SerializableNet[];
         mergeCount: number;

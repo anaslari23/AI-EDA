@@ -457,3 +457,86 @@ body {
 .error-boundary__retry:hover {
   opacity: 0.85;
 }
+/* ─── AI Wire Assist ─── */
+
+.ai-wire-assist {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-wire-assist__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ai-wire-assist__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ai-wire-assist__textarea,
+.ai-wire-assist__select {
+  width: 100%;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.ai-wire-assist__textarea:focus,
+.ai-wire-assist__select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.ai-wire-assist__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.ai-wire-assist__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ai-wire-assist__button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-wire-assist__button:hover {
+  border-color: var(--accent-blue);
+}
+
+.ai-wire-assist__button--connect {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border: none;
+  color: #fff;
+}
+
+.ai-wire-assist__status {
+  font-size: 12px;
+  color: var(--accent-green);
+  background: rgba(129, 199, 132, 0.12);
+  border: 1px solid rgba(129, 199, 132, 0.28);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}

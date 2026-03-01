@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -30,9 +31,19 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.database_url_override:
+            return self.database_url_override
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @property
+    def sync_database_url(self) -> str:
+        return (
+            self.database_url
+            .replace("postgresql+asyncpg://", "postgresql://")
+            .replace("postgresql://", "postgresql://")
         )
 
     @property
@@ -47,3 +58,5 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+    database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
+    auto_migrate_on_startup: bool = False

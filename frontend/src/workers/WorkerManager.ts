@@ -73,7 +73,7 @@ export class WorkerManager {
 
     async merge(graph: SerializableCircuitGraph): Promise<MergeResponse> {
         const req: MergeRequest = {
-            command: 'MERGE',
+            command: 'MERGE_NETS',
             id: createRequestId(),
             payload: { graph },
         };
@@ -175,7 +175,7 @@ export class WorkerManager {
 
     private handleWorkerCrash(): void {
         // Reject all pending requests
-        for (const [id, pending] of this.pending) {
+        for (const [, pending] of this.pending) {
             clearTimeout(pending.timer);
             pending.reject(new Error('Worker crashed'));
         }
@@ -212,9 +212,9 @@ export class WorkerManager {
                     durationMs,
                     result: { issues: [], isValid: true, errorCount: 0, warningCount: 0 },
                 };
-            case 'MERGE':
+            case 'MERGE_NETS':
                 return {
-                    command: 'MERGE',
+                    command: 'MERGE_NETS',
                     id: request.id,
                     durationMs,
                     result: { nets: [], mergeCount: 0 },
@@ -233,13 +233,15 @@ export class WorkerManager {
                     durationMs,
                     result: { visitedNodeIds: [], visitedEdgeIds: [], path: [] },
                 };
-            default:
+            default: {
+                const unknownReq = request as { command: string; id: string };
                 return {
-                    command: request.command,
-                    id: request.id,
+                    command: unknownReq.command as WorkerErrorResponse['command'],
+                    id: unknownReq.id,
                     durationMs,
                     error: 'Fallback: unknown command',
                 } as WorkerErrorResponse;
+            }
         }
     }
 

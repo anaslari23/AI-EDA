@@ -34,7 +34,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
             case 'VALIDATE':
                 response = handleValidate(req.id, req.payload.graph, req.payload.checks, start);
                 break;
-            case 'MERGE':
+            case 'MERGE_NETS':
                 response = handleMerge(req.id, req.payload.graph, start);
                 break;
             case 'ANALYZE_CURRENT':
@@ -49,13 +49,17 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
                     start,
                 );
                 break;
-            default:
+            default: {
+                // Defensive fallback for malformed runtime payloads.
+                const unknownReq = req as { command: string; id: string };
                 response = {
-                    command: req.command,
-                    id: req.id,
+                    command: unknownReq.command as WorkerErrorResponse['command'],
+                    id: unknownReq.id,
                     durationMs: performance.now() - start,
-                    error: `Unknown command: ${req.command}`,
+                    error: `Unknown command: ${unknownReq.command}`,
                 } as WorkerErrorResponse;
+                break;
+            }
         }
 
         self.postMessage(response);
@@ -379,7 +383,7 @@ function handleMerge(
     }
 
     return {
-        command: 'MERGE',
+        command: 'MERGE_NETS',
         id,
         durationMs: performance.now() - start,
         result: { nets, mergeCount },
@@ -394,7 +398,6 @@ function handleAnalyzeCurrent(
     start: number,
 ): WorkerResponse {
     const nodeMap = buildNodeMap(graph);
-    const edgesForNode = buildEdgesForNode(graph);
 
     const nodeCurrents: Array<{
         nodeId: string;

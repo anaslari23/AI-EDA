@@ -13,7 +13,7 @@
  */
 
 import type { GraphPin, ConnectionCheckResult, CircuitState, Net } from './models';
-import { createNet, mergeNets, generateNetId, generateNetName } from './netOperations';
+import { generateNetId, generateNetName } from './netOperations';
 
 // ─── Direction Compatibility Matrix ───
 

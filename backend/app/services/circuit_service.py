@@ -80,6 +80,31 @@ class CircuitService:
         await self.db.flush()
         return circuit
 
+    async def save_snapshot(
+        self,
+        circuit_id: uuid.UUID,
+        graph: CircuitGraph,
+        base_version: int,
+    ) -> Circuit:
+        """Save an explicit browser snapshot.
+
+        This is the canonical persistence entrypoint for frontend-owned graph state.
+        """
+        circuit = await self.get_by_id(circuit_id)
+        if circuit.version != base_version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Version conflict: expected v{base_version}, "
+                    f"but current is v{circuit.version}"
+                ),
+            )
+
+        return await self.update_graph(
+            circuit_id,
+            CircuitUpdateGraph(graph=graph),
+        )
+
     # ─── AI Generation ───
 
     async def generate_from_description(

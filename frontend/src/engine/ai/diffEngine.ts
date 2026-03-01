@@ -206,7 +206,6 @@ function diffConnections(
             });
         } else {
             // New connection — check if user manually handled either pin
-            const userEdge = userEdits.addedEdgeIds.size > 0;
             // If a user-created edge involves the same pins, mark conflict
             const conflicts = [...userEdits.addedEdgeIds].some((edgeId) => {
                 const edge = state.edges[edgeId];

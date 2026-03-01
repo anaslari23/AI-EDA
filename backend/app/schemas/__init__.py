@@ -1,7 +1,6 @@
 from app.schemas.intent import IntentParseRequest, IntentParseResponse, HardwareIntent
 from app.schemas.component import SelectedComponents
 from app.schemas.circuit import CircuitGraph
-from app.schemas.validation import ValidationResult
 from app.schemas.pcb import PCBConstraints
 from app.schemas.bom import BOM
 
@@ -11,7 +10,6 @@ __all__ = [
     "HardwareIntent",
     "SelectedComponents",
     "CircuitGraph",
-    "ValidationResult",
     "PCBConstraints",
     "BOM",
 ]

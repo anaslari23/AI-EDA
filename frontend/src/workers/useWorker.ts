@@ -20,6 +20,7 @@ import type {
 } from './protocol';
 
 import { getWorkerManager } from './WorkerManager';
+import { usePerformanceStore } from '../store/performanceStore';
 
 // ─── State Shape ───
 
@@ -53,6 +54,7 @@ interface WorkerState {
 
 interface WorkerActions {
     validate(graph: SerializableCircuitGraph, checks?: string[]): Promise<void>;
+    mergeNets(graph: SerializableCircuitGraph): Promise<void>;
     merge(graph: SerializableCircuitGraph): Promise<void>;
     analyzeCurrent(graph: SerializableCircuitGraph): Promise<void>;
     traverse(
@@ -100,6 +102,7 @@ export const useWorkerStore = create<WorkerStore>((set) => ({
         try {
             const mgr = getWorkerManager();
             const res = await mgr.validate(graph, checks);
+            usePerformanceStore.getState().recordWorker('VALIDATE', res.durationMs, mgr.pendingCount);
 
             if ('error' in res) {
                 set({
@@ -127,11 +130,12 @@ export const useWorkerStore = create<WorkerStore>((set) => ({
         }
     },
 
-    merge: async (graph) => {
+    mergeNets: async (graph) => {
         set({ isMerging: true, lastError: null });
         try {
             const mgr = getWorkerManager();
             const res = await mgr.merge(graph);
+            usePerformanceStore.getState().recordWorker('MERGE_NETS', res.durationMs, mgr.pendingCount);
 
             if ('error' in res) {
                 set({ isMerging: false, lastError: (res as { error: string }).error });
@@ -152,11 +156,17 @@ export const useWorkerStore = create<WorkerStore>((set) => ({
         }
     },
 
+    // Backward-compatible alias while callers migrate to mergeNets().
+    merge: async (graph) => {
+        await useWorkerStore.getState().mergeNets(graph);
+    },
+
     analyzeCurrent: async (graph) => {
         set({ isAnalyzing: true, lastError: null });
         try {
             const mgr = getWorkerManager();
             const res = await mgr.analyzeCurrent(graph);
+            usePerformanceStore.getState().recordWorker('ANALYZE_CURRENT', res.durationMs, mgr.pendingCount);
 
             if ('error' in res) {
                 set({ isAnalyzing: false, lastError: (res as { error: string }).error });
@@ -182,6 +192,7 @@ export const useWorkerStore = create<WorkerStore>((set) => ({
         try {
             const mgr = getWorkerManager();
             const res = await mgr.traverse(graph, startNodeId, direction);
+            usePerformanceStore.getState().recordWorker('TRAVERSE', res.durationMs, mgr.pendingCount);
 
             if ('error' in res) {
                 set({ isTraversing: false, lastError: (res as { error: string }).error });

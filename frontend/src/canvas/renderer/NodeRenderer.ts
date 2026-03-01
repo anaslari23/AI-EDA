@@ -6,6 +6,17 @@ import {
     type Viewport,
 } from '../types';
 
+function clamp(v: number): number {
+    return Math.max(0, Math.min(255, v));
+}
+
+function adjustColor(color: number, amount: number): number {
+    const r = clamp(((color >> 16) & 0xff) + amount);
+    const g = clamp(((color >> 8) & 0xff) + amount);
+    const b = clamp((color & 0xff) + amount);
+    return (r << 16) | (g << 8) | b;
+}
+
 /**
  * Render a single component node as a rounded rectangle
  * with label and part number.
@@ -22,12 +33,40 @@ export function renderNode(
     const sh = node.size.height * zoom;
 
     const color = DEFAULT_THEME.nodeColors[node.type] ?? 0x9e9e9e;
+    const faceColor = adjustColor(color, -35);
+    const topColor = adjustColor(color, 24);
+    const edgeLight = adjustColor(color, 46);
+    const edgeDark = adjustColor(color, -60);
+    const depth = Math.max(1.8, 3 * zoom);
+    const radius = 7 * zoom;
 
-    // Node body
-    graphics.roundRect(sx, sy, sw, sh, 6 * zoom);
+    // Soft drop shadow under the package.
+    graphics.roundRect(sx + 3 * zoom, sy + 4 * zoom, sw, sh, radius);
+    graphics.fill({ color: 0x000000, alpha: 0.25 });
 
-    // Fill
-    graphics.fill({ color, alpha: 0.12 });
+    // Side wall for package thickness.
+    graphics.roundRect(sx + depth, sy + depth, sw, sh, radius);
+    graphics.fill({ color: edgeDark, alpha: 0.9 });
+
+    // Main top package face.
+    graphics.roundRect(sx, sy, sw, sh, radius);
+    graphics.fill({ color: faceColor, alpha: 0.96 });
+
+    // Inner top face highlight plate.
+    graphics.roundRect(sx + 3 * zoom, sy + 3 * zoom, sw - 6 * zoom, sh * 0.44, 5 * zoom);
+    graphics.fill({ color: topColor, alpha: 0.28 });
+
+    // Left and top edge highlights for bevel.
+    graphics.roundRect(sx + 1 * zoom, sy + 1 * zoom, sw - 2 * zoom, 2.5 * zoom, 3 * zoom);
+    graphics.fill({ color: edgeLight, alpha: 0.36 });
+    graphics.roundRect(sx + 1 * zoom, sy + 1 * zoom, 2.5 * zoom, sh - 2 * zoom, 3 * zoom);
+    graphics.fill({ color: edgeLight, alpha: 0.24 });
+
+    // Bottom and right edge darkening for depth.
+    graphics.roundRect(sx + 1 * zoom, sy + sh - 2.5 * zoom, sw - 2 * zoom, 2.2 * zoom, 2 * zoom);
+    graphics.fill({ color: edgeDark, alpha: 0.42 });
+    graphics.roundRect(sx + sw - 2.5 * zoom, sy + 1 * zoom, 2.2 * zoom, sh - 2 * zoom, 2 * zoom);
+    graphics.fill({ color: edgeDark, alpha: 0.32 });
 
     // Border
     let borderColor = DEFAULT_THEME.nodeBorder;
@@ -39,12 +78,17 @@ export function renderNode(
         borderColor = DEFAULT_THEME.nodeBorderSelected;
         borderWidth = 2;
     }
+    graphics.roundRect(sx, sy, sw, sh, radius);
     graphics.stroke({ width: borderWidth, color: borderColor });
 
-    // Top accent bar
+    // Top accent/silk strip.
     const barHeight = 4 * zoom;
-    graphics.roundRect(sx, sy, sw, barHeight, 6 * zoom);
-    graphics.fill({ color, alpha: 0.8 });
+    graphics.roundRect(sx + 1.5 * zoom, sy + 1.5 * zoom, sw - 3 * zoom, barHeight, 5 * zoom);
+    graphics.fill({ color: adjustColor(color, 18), alpha: 0.86 });
+
+    // Pin-1 marker dot (silkscreen cue).
+    graphics.circle(sx + 8 * zoom, sy + 8 * zoom, 1.8 * zoom);
+    graphics.fill({ color: 0xf0f0f0, alpha: 0.86 });
 }
 
 /**
@@ -122,14 +166,35 @@ export function renderPins(
             color = DEFAULT_THEME.pinConnected;
         }
 
+        const metalTop = adjustColor(color, 65);
+        const metalBase = adjustColor(color, -25);
+        const metalDark = adjustColor(color, -70);
+
+        // Pin stem that looks soldered into the package.
+        const stemWidth = Math.max(1.2, 2.2 * zoom);
+        const stemLen = Math.max(2, 4 * zoom);
+        const isLeft = pin.offset.x <= node.size.width / 2;
+        const sx = isLeft ? px + radius * 0.35 : px - radius * 0.35 - stemLen;
+        graphics.roundRect(sx, py - stemWidth / 2, stemLen, stemWidth, stemWidth / 2);
+        graphics.fill({ color: metalDark, alpha: 0.72 });
+
         // Outer ring for power/ground pins
         if (pin.signalType === 'power' || pin.signalType === 'ground') {
             graphics.circle(px, py, radius + 2 * zoom);
             graphics.stroke({ width: 1.5, color, alpha: 0.4 });
         }
 
+        // Base metal pad.
         graphics.circle(px, py, radius);
-        graphics.fill({ color, alpha: 0.9 });
+        graphics.fill({ color: metalBase, alpha: 0.96 });
+
+        // Top metallic shine.
+        graphics.circle(px - radius * 0.22, py - radius * 0.24, radius * 0.62);
+        graphics.fill({ color: metalTop, alpha: 0.85 });
+
+        // Tiny occlusion ring to push depth.
+        graphics.circle(px, py, radius);
+        graphics.stroke({ width: Math.max(0.8, 1.1 * zoom), color: metalDark, alpha: 0.45 });
 
         // Pin label
         if (zoom > 0.6) {

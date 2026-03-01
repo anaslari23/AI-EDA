@@ -7,7 +7,6 @@
 
 import type {
     ComponentNode,
-    GraphPin,
     GraphEdge,
     Net,
     ComponentType,
